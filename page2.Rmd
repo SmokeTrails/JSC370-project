@@ -7,4 +7,4 @@ output:
     toc_float: TRUE
 ---
 
-Plots are on homepage.
+Plots are on homepage. The first two plots are copied from the lab12 repo, and the last two plots are made by me.

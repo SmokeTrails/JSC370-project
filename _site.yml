@@ -1,17 +1,15 @@
-name: "My JSC Project"
+name: "JSC370 Final Project - Mohsin Reza"
 output_dir: "."
 navbar:
-  title: "JSC370 Final Project"
+  title: "JSC370 Final Project - Mohsin Reza"
   left:
     - text: "Home"
       href: index.html
-    - text: "Second page"
-      href: page2.html
+    - text: "Interactive Visualizations for HW5"
+      href: hw5.html
   right:
     - icon: fa-github fa-lg
-      href: https://github.com/JSC370/jsc370-2022/
-    - text: "JSC370 Home"
-      href: https://jsc370.github.io/jsc370-2022/
+      href: https://github.com/SmokeTrails/JSC370-project
 output:
   html_document:
     theme: cosmo

@@ -9,7 +9,7 @@ output:
 
 <br>
 
-This is my JSC370 Final Project website. I will showcase a few interactive visuals here.
+This is my JSC370 Final Project website. The homepage is currently a work in progress. 
 
 <br>
 

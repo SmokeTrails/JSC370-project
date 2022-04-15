@@ -1,5 +1,5 @@
 ---
-title: "Page 2"
+title: "Interactive Visualizations for HW5"
 author: "Mohsin Reza"
 output: 
   html_document:
@@ -7,4 +7,142 @@ output:
     toc_float: TRUE
 ---
 
-Plots are on homepage. The first two plots are copied from the lab12 repo, and the last two plots are made by me.
+```{r setup, message=FALSE, echo=FALSE, warning=FALSE}
+
+library(data.table)
+library(tidyverse)
+library(dplyr)
+library(plotly)
+library(DT)
+library(knitr)
+
+# Initialize code chunk options
+opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  eval=TRUE,
+  echo = FALSE,
+  cache = FALSE,
+  fig.width = 15, 
+  fig.align = 'center',
+  fig.asp = 0.618,
+  out.width = "700px",
+  class.source = "code-r")
+```
+
+```{css, echo = FALSE}
+.code-r { /* Code block */
+  font-size: 15px;
+}
+
+.code-r-small { /* Code block */
+  font-size: 10px;
+}
+```
+
+```{r}
+data <- read.csv("dataset.csv", header = T)
+cities <- c("Barrie", "Bellevile", "Brampton", "Brantford", "Brockville", 
+            "Burlington", "Cambridge", "Clarence-Rockland", "Cornwall", "Dryden",
+            "Elliot Lake", "Greater Sudbury", "Guelph", "Hamilton", 
+            "Kawartha Lakes", "Kenora", "Kingston", "Kitchener", "London", 
+            "Markham", "Mississauga", "Niagara Falls", "North Bay", "Orillia", 
+            "Oshawa", "Ottawa", "Owen Sound", "Pembroke", "Peterborough", 
+            "Pickering", "Port Colborne", "Quinte West", "Richmond Hill", 
+            "Sarnia", "Sault Ste. Marie", "St. Catharines", "St. Thomas", 
+            "Stratford", "Temiskaming Shores", "Thorold", "Thunder Bay", 
+            "Timmins", "Toronto", "Vaughan", "Waterloo", "Welland", "Windsor", 
+            "Woodstock")
+
+data <- data %>%
+  mutate(Date.Reported = as.Date(Date.Reported, format = "%Y/%m/%d"),
+         Contaminant.Name = str_to_sentence(Contaminant.Name),
+         year = as.numeric(format(as.Date(Date.Reported, format = "%Y/%m/%d"), "%Y")),
+         year_category = ifelse(year <= 2007, "2003-2007", 
+                         ifelse(year <= 2012, "2008-2012", 
+                         ifelse(year <= 2016, "2013-2016", "2017-2020"))),
+         location_type = ifelse(Site.Municipality %in% cities, "city", "outside city"),
+         consequence_score = as.numeric(substring(Health.Environmental.Consequence, 1, 1)))
+```
+
+The dataset I chose contains information related to environmental spills in Ontario between 2003 and 2020 (inclusive). The data were acquired from the Government of Ontario's open data catalogue, and the link to the dataset can be found [here](https://data.ontario.ca/en/dataset/environmental-occurrences-and-spills/resource/df7db83f-30ea-410e-b1d1-629137b6a8c9). This dataset was originally created by compiling incident reports received by the Spills Action Centre (SAC) in Ontario. Below are three interactive visuals that tell us a bit more about the dataset:
+
+<br>
+
+## Plot 1: Number of environmental spills per year by city
+
+```{r}
+data %>%
+  filter(location_type == "city") %>%
+  count(year, Site.Municipality) %>%
+  rename(Municipality = Site.Municipality) %>%
+  plot_ly(x=~year, y=~n, color = ~Municipality, type = "scatter", mode = "lines",
+          hover_info = "text",
+          text = ~paste(paste0("City: ", Municipality),
+                        paste0("Year: ", year),
+                        paste0("Number of environmental spills: ", n),
+                        sep = "<br>")) %>%
+  layout(yaxis = list(title = "number of environmental spills"))
+```
+
+The first plot shown above allows us to determine if the number of environmental spills in a year is increasing or decreasing year over year for all the major cities in Ontario. Right away, we can clearly see that the largest increase in the number of environmental spills per year happened in Toronto. There were also notable increases in the number of environemntal spills per year in Ottawa and Mississauga, although there was a rather sharp decrease in the number of spills in Mississauga from 2016 to 2020. We can also see that for many of the smaller cities like North Bay, Brockville, Kenora, etc., the number of spills per year has mostly fluctuated from year to year, with no significant increase. Overall, the clear trend that we can see from this plot is that the largest increase in the number of spills per year from 2003 to 2020 happened in the biggest cities in Ontario (Toronto, Ottawa, Mississauga). This is in line with what one would expect, as intuitively the biggest cities now would have most likely seen the most industrial activity.
+
+## Plot 2: Mean and sd of consequence score by contaminant type for top 10 contaminants by number of spills they caused
+
+```{r}
+table1 <- data %>%
+  group_by(Contaminant.Name) %>%
+  rename(Contaminant = Contaminant.Name) %>%
+  summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
+  arrange(across(`Number of spills`, desc)) %>%
+  filter(Contaminant != "Unknown / n/a") %>%
+  head(10)
+
+sd <- data %>%
+  group_by(Contaminant.Name) %>%
+  summarise(mean = mean(consequence_score, na.rm = TRUE), 
+            sd = sd(consequence_score, na.rm = TRUE)) %>%
+  filter(Contaminant.Name %in% table1$Contaminant)
+
+p2 <- data %>%
+  filter(Contaminant.Name %in% table1$Contaminant) %>%
+  inner_join(sd, by = "Contaminant.Name") %>%
+  rename(`Mean consequence score` = consequence_score,
+         Contaminant = Contaminant.Name) %>%
+  ggplot() +
+  aes(x = Contaminant, y = `Mean consequence score`, 
+      text = paste("Sd of consequence score:", sd)) +
+  stat_summary(fun.data = "mean_sdl", geom = "errorbar") +
+  stat_summary(fun.data = "mean_sdl") +
+  coord_flip() +
+  labs(x = "Contaminant", y = "Consequence Score") +
+  theme_minimal()
+ggplotly(p2)
+```
+
+Overall, we can conclude that there is not a great deal of variation in the mean consequence score across the top 10 contaminants (by the number of spills they caused). We can see that on average, raw sewage was the contaminant which caused the more severe environmental spills as it has the highest mean consequence score of 2.01. However, this is still not particularly alarming as a score of 2 for consequence score indicates minor environmental damage. Additionally, hydraulic oil was the contaminant which caused the least severe environmental spills as it has the lowest mean consequence score of 1.81. Finally, we may also conclude that furnace oil was the contaminant which had the most variation in the severity of the environmental spill it caused. This is because its consequence score has the highest standard deviation of 0.905.
+
+## Plot 3: Top 10 biggest causes of environmental spills
+
+```{r}
+p3 <- data %>%
+  group_by(Incident.Reason) %>%
+  summarise(`Number of environmental spills` = n()) %>%
+  arrange(across(`Number of environmental spills`, desc)) %>%
+  filter(Incident.Reason != "Unknown / N/A") %>%
+  filter(Incident.Reason != "Unknown - Reason not determined") %>%
+  filter(Incident.Reason != "Other - Reason not otherwise defined") %>%
+  filter(Incident.Reason != "Other") %>%
+  rename(Cause = Incident.Reason) %>%
+  head(11)
+p3[7, 1] = "Material Failure (Poor Design/Substandard Material)"
+p3 <- p3[-c(9),]
+p3 <- p3 %>%
+  mutate(Cause = reorder(Cause, `Number of environmental spills`)) %>%
+  ggplot(aes(x = Cause, y = `Number of environmental spills`)) +
+  geom_bar(stat = 'identity') +
+  coord_flip()
+ggplotly(p3)
+```
+
+From this plot, we can see that by far, the two biggest causes of environmental spills are human error and equipment failure. Other major causes include weather conditions, equipment failure, deliberate act, and lack of maintenance.

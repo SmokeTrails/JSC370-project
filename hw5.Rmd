@@ -41,7 +41,7 @@ opts_chunk$set(
 ```
 
 ```{r}
-data <- read.csv("dataset.csv", header = T)
+data <- read.csv("data/dataset.csv", header = T)
 cities <- c("Barrie", "Bellevile", "Brampton", "Brantford", "Brockville", 
             "Burlington", "Cambridge", "Clarence-Rockland", "Cornwall", "Dryden",
             "Elliot Lake", "Greater Sudbury", "Guelph", "Hamilton", 

@@ -9,4 +9,21 @@ output:
 
 <br>
 
-This is my JSC370 Final Project website. The homepage is currently a work in progress. 
+# About the project
+
+In this project, I used a dataset that contains information related to environmental spills in Ontario between 2003 and 2020 to answer the following research question:
+
+What were the major sources and causes of environmental spills in Ontario between 2003 and 2020, and how did the number, sources and causes of environmental spills change across different years and locations?
+
+I used the tidyverse and ggplot packages in the R programming languages to wrangle the data and create a variety of visualizations, which helped me get a good idea of the answer to my question.
+
+I also used machine learning algorithms like decision trees, bagging, and random forests to predict the source and cause of an environmental spill based on various factors.
+
+I have written a detailed report describing my findings, which you may find [here](https://github.com/SmokeTrails/JSC370-project/blob/main/report/report.pdf).
+
+I have also created a brief 5 minute presentation regarding my project, which you may find [here]().
+
+# Interactive Visualizations
+
+
+

@@ -1,7 +1,7 @@
 ---
-title: "JSC370 - Midterm Report"
+title: "JSC370 - Final Project - Written Report"
 author: "Mohsin Reza"
-date: "2022-03-10"
+date: "2022-04-21"
 output: pdf_document
 urlcolor: blue
 linkcolor: blue
@@ -10,27 +10,41 @@ linkcolor: blue
 ```{r setup, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(ggplot2)
+library(tidyverse)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(gbm)
+library(xgboost)
 data <- read.csv("../data/dataset.csv", header = T)
 ```
 
 
 # Introduction
 
-The dataset I chose contains information related to environmental spills in Ontario between 2003 and 2020 (inclusive). My research question is as follows:
+The dataset I chose to analyze for this project contains information related to environmental spills in Ontario between 2003 and 2020 (inclusive). My initial research question was as follows:
 
 What were the major sources, causes and consequences of environmental spills in Ontario between 2003 and 2020, and how did the number, sources, causes and consequences of environmental spills change across different years and locations?
+
+However, after beginning the project, I believed that this question was too broad and I refined it to focus on just the sources and causes. I decided to choose this aspect as analyzing the main causes would allow us to determine how to best prevent environmental spills in the future (by mitigating the causes and risks). Therefore, my final research question is as follows:
+
+What were the major sources and causes of environmental spills in Ontario between 2003 and 2020, and how did the number, sources and causes of environmental spills change across different years and locations? 
+
+In terms of background information on the research question, I found extensive research and publications on oil spills in particular, but found comparatively little research on environmental spills from other contaminants. The major consequences of oil spills, according to the chapter on fossil fuels in the World Scientific Series in Current Energy Issues, were human error and equipment failure. It estimated that 30-50% of oil spills were directly or indirectly caused by human error, and 20-40% were caused by equipment failure/malfunction. One interesting thing I found regarding my question is that a 2020 paper published on ScienceDirect claimed that the risk of spillage had increased due to oil production, exploration, and consumption. However, according to the chapter on fossil fuels in the World Scientific Series in Current Energy Issues, the risk of spillage  had decreased in the past 10 years despite the increased production and consumption of oil. After conducting this background research, I was curious to see what my dataset would say regarding the consequences of environmental spills in Ontario.
+
 
 # Methods
 
 The data were acquired from the Government of Ontario's open data catalogue, and the link to the dataset can be found [here](https://data.ontario.ca/en/dataset/environmental-occurrences-and-spills/resource/df7db83f-30ea-410e-b1d1-629137b6a8c9). This dataset was originally created by compiling incident reports received by the Spills Action Centre (SAC) in Ontario.
 
-In terms of tools used for data exploration, I used the R programming language for all aspects of the analysis. The dplyr package, which is part of the tidyverse library, was used to clean and wrangle the data. Additionally, the kable package was used to create the summary tables, and the ggplot package was used to create the visualizations in this report.
+In terms of tools used for data exploration, I used the R programming language for all aspects of the analysis. The dplyr package, which is part of the tidyverse library, was used to clean and wrangle the data. Additionally, the kable package was used to create the summary tables, and the ggplot package was used to create the visualizations in this report. I also used the plotly package to create the interactive visualizations that can be found on the website. Finally, the rpart and randomForest packages were used for the machine learning parts of the analysis. 
 
-Several steps were taken to clean and wrangle the data appropriately. Firstly, a new "year" variable was created, which extracted the year from the "date reported" column. Secondly, a "year category" variable was created using the "year" variable, which had values "2003-2007", "2008-2012", "2013-2016", and "2017-2020" depending on which year the spill occurred in. Thirdly, I also converted all the contaminant names to sentence case, as there were many observations with the same contaminant name but in different cases. Fourthly, a new categorical variable called "location_type" was created. It took the value "city" if the site municipality was a city, and "outside city" if the site municipality was not a city. I used information from [this site](https://www.ontario.ca/page/list-ontario-municipalities) to determine if a municipality was considered a city or not. Finally, the number from the "health environment consequence" column was extracted and put in the newly created "consequence_score" column. In the case of missing values, for all variables, I decided to leave them as they were rather than imputing or removing them.
+To analyze the data and answer the research question, I created several summary tables and visualizations, which can be seen in the results section. I also used the chi squared test to determine if the patterns I saw in the visualizations and tables were statistically significant. Finally, I used machine learning techniques including decision trees, random forests, bagging, and XGBoost to determine which factors were most important in predicting the cause of an environmental spill. 
 
-The code used to perform the wrangling steps described above is shown below:
+Several steps were taken to clean and wrangle the data appropriately. Firstly, a new "year" variable was created, which extracted the year from the "date reported" column. Secondly, a "year category" variable was created using the "year" variable, which had values "2003-2007", "2008-2012", "2013-2016", and "2017-2020" depending on which year the spill occurred in. Thirdly, I also converted all the contaminant names to sentence case, as there were many observations with the same contaminant name but in different cases. Fourthly, a new categorical variable called "location_type" was created. It took the value "city" if the site municipality was a city, and "outside city" if the site municipality was not a city. I used information from [this site](https://www.ontario.ca/page/list-ontario-municipalities) to determine if a municipality was considered a city or not. Fifthly, I also created a categorical variable called "cause" that took the value Human error and Equipment failure if the incident reason was one of these two and other if the incident reason was something else. This variable was created primarily for the ML algorithms, as without making the number of categories smaller the algorithms were taking too long to run. Finally, the number from the "health environment consequence" column was extracted and put in the newly created "consequence_score" column. In the case of missing values, for all variables, I decided to leave them as they were rather than imputing or removing them.
 
-```{r, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE}
+
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 cities <- c("Barrie", "Bellevile", "Brampton", "Brantford", "Brockville", 
             "Burlington", "Cambridge", "Clarence-Rockland", "Cornwall", "Dryden",
             "Elliot Lake", "Greater Sudbury", "Guelph", "Hamilton", 
@@ -43,6 +57,22 @@ cities <- c("Barrie", "Bellevile", "Brampton", "Brantford", "Brockville",
             "Timmins", "Toronto", "Vaughan", "Waterloo", "Welland", "Windsor", 
             "Woodstock")
 
+pop <- c(141434, 50716, 593638, 97496, 21346, 183314, 129920, 24512, 46589, 7749,
+         10741, 161531, 131794, 536917, 75423, 15096, 123798, 233222, 383822, 
+         328966, 721599, 88071, 51553, 31166, 159458, 934243, 21341, 13882, 
+         81032, 91771, 18306, 43577, 195022, 71594, 73368, 133113, 38909, 31465,
+         9920, 18801, 107909, 41788, 2731570, 306233, 104986, 52293, 217188, 
+         40902)
+
+ontario <- data.frame(
+  Site.Municipality = cities,
+  population = pop
+)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Material Failure - Poor Design/Substandard Material", "Material Failure", data$Incident.Reason)
+data$Incident.Reason <- ifelse(grepl("Material",data$Incident.Reason, fixed = TRUE), "Material Failure", data$Incident.Reason)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Equipment Failure - Malfunction of system components", "Equipment Failure", data$Incident.Reason)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Fire/Explosion - Resulting from fires/explosions (Not occurrences which cause a fire or explosion)", "Fire/Explosion", data$Incident.Reason)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Power Interruption - Loss of electrical power", "Power Interruption/Loss", data$Incident.Reason)
 data <- data %>%
   mutate(Date.Reported = as.Date(Date.Reported, format = "%Y/%m/%d"),
          Contaminant.Name = str_to_sentence(Contaminant.Name),
@@ -51,26 +81,18 @@ data <- data %>%
                          ifelse(year <= 2012, "2008-2012", 
                          ifelse(year <= 2016, "2013-2016", "2017-2020"))),
          location_type = ifelse(Site.Municipality %in% cities, "city", "outside city"),
-         consequence_score = as.numeric(substring(Health.Environmental.Consequence, 1, 1)))
+         consequence_score = as.numeric(substring(Health.Environmental.Consequence, 1, 1)),
+         Cause = ifelse(Incident.Reason == "Operator/Human Error" | Incident.Reason == "Equipment Failure", "Human Error/Equipment Failure", "Other")) %>%
+  left_join(ontario, by = "Site.Municipality")
 ```
 
 
-# Preliminary Results
+# Results
 
-To answer our research question, we focused on the following variables:
+When data was imported, I found that it had 109247 observations of 12 variables. Additionally, by checking the header and footer of the dataset, I determined that there were no import issues present. In terms of missing values, the consequence score variable had the most number of missing values with 60349. However, this is not a concern as the variable is not to be used in the analysis. Additionally, the incident reason variable had 29329 missing values, the source type variable had 7342 missing values, and the contaminant name variable had 3802 missing values. Additionally, the website mentions that the dataset is for environmental spills between 2003 and 2020 (inclusive). Since all the reported dates were dates between 2003 and 2020 (inclusive), I concluded that data errors were probably not present for the reported date. In the rest of the variables, which were all categorical, it was extremely difficult to tell if there were data errors present, as there was no set list of normal values for them found in the data dictionary.
 
-- Date Reported
-- Site Municipality
-- Contaminant Name
-- Source Type
-- Incident Reason
-- Year Category
-- Location Type
-- Consequence Score
+Now, below are several visualizations and summary tables that attempt to answer the question of interest.
 
-When data was imported, I found that it had 109247 observations of 12 variables. Additionally, by checking the header and footer of the dataset, I determined that there were no import issues present. In terms of missing values, the consequence score variable had the most number of missing values with 60349. Additionally, the incident reason variable had 29329 missing values, the source type variable had 7342 missing values, and the contaminant name variable had 3802 missing values. For the consequence score variable, I was able to determine that the range for this variable was 0 (no impact) to 6 (major impact on human health) according to the data dictionary found [here](https://files.ontario.ca/moe_mapping/downloads/metadata/opendata/eos_metadata.pdf). Since all the consequence scores in my dataset were between 0 and 6, I concluded that data errors were probably not present for this variable. Additionally, the website mentions that the dataset is for environmental spills between 2003 and 2020 (inclusive). Since all the reported dates were dates between 2003 and 2020 (inclusive), I concluded that data errors were probably not present for the reported date. In the rest of the variables, which were all categorical, it was extremely difficult to tell if there were data errors present, as there was no set list of normal values for them found in the data dictionary.
-
-Now, displayed below are summary statistics for each variable of interest.
 
 ## Table showing the top 20 contaminants by number of spills
 
@@ -89,7 +111,7 @@ This table shows us that natural gas was by far the biggest culprit in terms of 
 
 ## Table showing the top 20 causes of environmental spills in Ontario
 
-```{r, echo=FALSE, eval=TRUE}
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
 options("scipen"=100, "digits"=4)
 table2 <- data %>%
   filter(Incident.Reason != "Unknown / N/A") %>%
@@ -97,36 +119,28 @@ table2 <- data %>%
   rename(`Incident Reason` = Incident.Reason) %>%
   summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
   arrange(across(`Number of spills`, desc)) %>%
-  head(20)
-knitr::kable(table2, "pipe")
+  head(21)
+knitr::kable(table2[-9,], "pipe")
 ```
 
-This table shows that operator/human error and equipment failure were the two biggest causes of environmental spills in Ontario. 21.13% of spills were caused by operator/human error, and 16.11% were caused by equipment failure. This shows us that perhaps the best way to prevent environmental spills is to purchase and maintain equipment more effectively, as well as give the personnel operating the equipment better training.
+This table shows that operator/human error and equipment failure were the two biggest causes of environmental spills in Ontario. 21.13% of spills were caused by operator/human error, and 18.10% were caused by equipment failure. This shows us that perhaps the best way to prevent environmental spills is to purchase and maintain equipment more effectively, as well as give the personnel operating the equipment better training. Another interesting thing to note is that these results are in line with our background research, which mentioned that the top two causes of environmental spills were human error and equipment failure.
 
-## Table showing summary statistics for the consequence score variable
-
-```{r, echo=FALSE, eval=TRUE}
-table3 <- data %>%
-  summarise(Mean = mean(consequence_score, na.rm = T), Sd = sd(consequence_score, na.rm = T), Median = median(consequence_score, na.rm = T))
-knitr::kable(table3, "pipe")
-```
-
-This table shows us that on average, the consequence score for an environmental spill was around 2, which means that the spill caused minor environmental damage (according to the data dictionary).
-
-## Table showing the top 20 municipalities with most spills
+## Table showing the top 20 cities with most spills per capita
 
 ```{r, echo=FALSE, eval=TRUE}
 options("scipen"=100, "digits"=4)
 table4 <- data %>%
   group_by(Site.Municipality) %>%
-  rename(Municipality = Site.Municipality) %>%
-  summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
-  arrange(across(`Number of spills`, desc)) %>%
+  summarise(`Number of spills per capita` = n()) %>%
+  left_join(ontario, by="Site.Municipality") %>%
+  rename(City = Site.Municipality) %>%
+  mutate(`Number of spills per capita` = `Number of spills per capita`/population) %>%
+  arrange(across(`Number of spills per capita`, desc)) %>%
   head(20)
 knitr::kable(table4, "pipe")
 ```
 
-This table shows us that Toronto had by far the most number of environmental spills, with a total of 16553. We can also see in the table that the top 20 municipalities with the most spills are all classified as cities. 
+This table shows us that Dryden and Kenora had by far the most number of spills per capita. One interesting thing that we can see in the table is that the top 20 cities with the highest number of spills per capita are mostly the cities with smaller populations.
 
 ## Table showing the years with the most spills
 
@@ -139,76 +153,194 @@ table5 <- data %>%
   arrange(across(`Number of spills`, desc))
 knitr::kable(table5, "pipe")
 ```
+
 From this table, we can see almost a clear trend that the number of spills has increased as the years have gone by. All of the last six years in the dataset make up the top six years with the most number of environmental spills.
 
-Now, displayed below are some visualizations which will help answer the question of interest.
+After having seen the main sources, causes, and locations of environmental spills, I then attempted to see whether there was any change in these sources and causes across different years and locations. Displayed below are some visualizations which will help answer this part of the research question.
 
-## Graph showing the number of spills for each of the top 5 contaminants by year category
+## Graph showing the number of spills for each of the top 20 contaminants by year
 
-```{r, echo=FALSE, eval=TRUE}
+```{r, echo=FALSE, eval=TRUE, fig.height=6, fig.width=8}
 options("scipen"=100, "digits"=4)
-top5 <- data %>%
+top20 <- data %>%
   group_by(Contaminant.Name) %>%
   rename(Contaminant = Contaminant.Name) %>%
   summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
   arrange(across(`Number of spills`, desc)) %>%
-  head(5)
+  head(20)
 
-data %>%
-  filter(Contaminant.Name %in% top5$Contaminant) %>%
-  ggplot(aes(x = year_category, fill = Contaminant.Name)) +
-  geom_bar(position = "dodge") +
-  theme_minimal() +
-  labs(x = "Year", fill = "Contaminant")
-```
-
-One interesting thing we can see in this plot is that as the years have gone by, natural gas has become an increasingly common contaminant and has accounted for a greater number of spills. Otherwise, the number of spills with diesel fuel, hydraulic oil, sewage, and transformer oil have stayed relatively consistent with only minor fluctuations. 
-
-## Graph showing the number of spills for each of the top 5 contaminants by location type
-
-```{r, echo=FALSE, eval=TRUE}
-data %>%
-  filter(Contaminant.Name %in% top5$Contaminant) %>%
-  ggplot(aes(x = Contaminant.Name)) +
-  geom_bar() +
-  theme_minimal() +
-  facet_wrap(~location_type) +
-  coord_flip() +
-  labs(x = "Contaminant")
-```
-
-From this graph, one interesting thing we can conclude is that in cities, natural gas is the contaminant for a much greater number of spills than diesel fuel. However, outside cities, both substances were contaminants for a similar number of spills. We can also see that the other substances have a fairly similar number of spills inside and outside cities. 
-
-# Time series plot showing the mean consequence score by year
-
-```{r, echo=FALSE, eval=TRUE}
-data %>%
-  group_by(year) %>%
-  summarise(mean = mean(consequence_score, na.rm = T)) %>%
-  ggplot(aes(x = year, y = mean)) +
+p1 <- data %>%
+  filter(Contaminant.Name %in% top20$Contaminant) %>%
+  group_by(Contaminant.Name, year) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = year, y = count, colour = Contaminant.Name)) +
   geom_line() +
-  theme_minimal()
+  theme_linedraw() +
+  labs(x = "Year", y = "Number of spills", colour = "Contaminant")
+p1 
 ```
 
-Unfortunately, the consequence score is only available for spill data since 2014. However, based on the data that we have, we can see that there was an increase in the mean consequence score as the years have gone by. This means that on average, environmental spills had more severe consequences as the years went by. The exception to this was 2019-2020, where the mean consequence score decreased. I suspect this may have been due to the lockdowns and less human activity. 
+Right away, we can see in this plot that there was a huge jump in the number of spills per year caused by natural gas between 2012 and 2016, and then there was a large decline in the number of spills per year caused by natural gas between 2019 and 2020. I wonder why there was such a huge jump and then such a huge decline. There was also an increase in the number of spills per year caused by hydraulic oil. Otherwise, for the most part, the number of spills caused by other contaminants stayed consistent, with only minor fluctuations from year to year. 
 
-## Plot showing the mean and sd of consequence score by location type
+## Graph showing the number of spills per capita for each of the 20 contaminants by city
 
-```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=3.5}
-data %>%
-  ggplot() +
-  aes(x = location_type, y = consequence_score) +
-  stat_summary(fun.data = "mean_sdl", geom = "errorbar") +
-  stat_summary(fun.data = "mean_sdl") +
-  theme_minimal()
+```{r, echo=FALSE, eval=TRUE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+ p2 <- data %>%
+  filter(Contaminant.Name %in% top20$Contaminant) %>%
+  filter(Site.Municipality %in% cities) %>%
+  group_by(Contaminant.Name, Site.Municipality) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  left_join(ontario, by="Site.Municipality") %>%
+  rename(City = Site.Municipality) %>%
+  mutate(`Number of spills per capita` = count/population) %>%
+  ggplot(aes(x = reorder(City, `Number of spills per capita`), y = `Number of spills per capita`, fill = Contaminant.Name)) +
+  geom_bar(stat = 'identity') +
+  theme_linedraw() +
+  coord_flip() +
+  labs(x = "City", y = "Number of spills per capita", fill = "Contaminant")
+p2
 ```
 
-From this plot, we can see that the severity of environmental spills was fairly similar both inside and outside cities.
+Overall, I cannot see any noticeable difference in the proportion of spills per capita for each of the top 20 contaminants across different cities. One interesting thing I can see, however, is that even though Kenora and Dryden have a much higher number of spills per capita overall compared to the other cities, they have a similar number of spills per capita for natural gas. Kenora has a much higher number of spills per capita for sewage, and both Kenora and Dryden have a higher number of spills per capita for diesel fuel compared to other cities.
 
-# Conclusion
+## Graph showing the number of spills for each of the top 20 causes by year
 
-Recall that our research question was: 
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=6, fig.width=8}
+options("scipen"=100, "digits"=4)
+top20 <- data %>%
+  filter(Incident.Reason != "Unknown / N/A") %>%
+  group_by(Incident.Reason) %>%
+  summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
+  arrange(across(`Number of spills`, desc)) %>%
+  head(21)
+top20 <- top20[-9,]
 
-What were the major sources, causes and consequences of environmental spills in Ontario between 2003 and 2020, and how did the number, sources, causes and consequences of environmental spills change across different years and locations?
+p3 <- data %>%
+  filter(Incident.Reason %in% top20$Incident.Reason) %>%
+  group_by(Incident.Reason, year) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  ggplot(aes(x = year, y = count, colour = Incident.Reason)) +
+  geom_line() +
+  theme_linedraw() +
+  labs(x = "Year", y = "Number of spills", colour = "Cause")
+p3
+```
 
-Based on our analysis thus far, we found that the major sources of environmental spills in Ontario were natural gas, diesel fuel, hydraulic oil, transformer oil, and sewage. The only notable change swe saw in the major sources was that natural gas became an increasingly common contaminant over time. Also, while diesel fuel and natural gas were similarly common outside cities, natural gas was much more common in cities. In terms of the causes, we found that operator/human error and equipment failure were the biggest causes of environmental spills, and there was no notable change in the causes across time and locations. Finally, we saw that for consequences, on average, most spills resulted in low environment damage. This damage increased on average from 2014-2019, but decreased in 2020. It was similar across location types.
+There are a lot of interesting patterns that we can see in this plot. Firstly, until around 2012, the biggest causes of environmental spills were either unknown or equipment failure, with human/operator error being in third place. However, from 2012 to 2015, there was a large increase in the number of environmental spills per year caused by human error, and human error far surpassed equipment failure to become the leading cause of environmental spills. Then, from 2019 to 2020, the number of spills per year caused by human error dropped significantly to be at a similar level to spills caused by equipment failure. I am interested to know what the reason was for such a drastic fluctuation. 
+
+## Graph showing the number of spills for each of the top 20 causes by city
+
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8}
+ p4 <- data %>%
+  filter(Incident.Reason %in% top20$Incident.Reason) %>%
+  filter(Site.Municipality %in% cities) %>%
+  group_by(Incident.Reason, Site.Municipality) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  left_join(ontario, by="Site.Municipality") %>%
+  rename(City = Site.Municipality) %>%
+  mutate(`Number of spills per capita` = count/population) %>%
+  ggplot(aes(x = reorder(City, `Number of spills per capita`), y = `Number of spills per capita`, fill = Incident.Reason)) +
+  geom_bar(stat = 'identity') +
+  theme_linedraw() +
+  coord_flip() +
+  labs(x = "City", y = "Number of spills per capita", fill = "Cause")
+p4
+```
+
+Overall, there are no noticeable differences in the proportion of spills per capita for each of the top 20 causes across different cities. Each city seems to have a similar proportion of spills per capita coming from the top two causes of human error and equipment failure, with a smaller proportion of spills per capita coming from weather, unknown, and other causes.
+
+The final part of the analysis involved attempting to predict the cause of an environmental spill based on a number of factors. This would be especially helpful as in a future incident, it would be possible to make an educated prediction of the cause and take action accordingly while awaiting the results of a full scale investigation. To do this, I implemented a classification tree, bagging, and random forest algorithm to predict the cause of an environmental spill based on various factors. I wanted to use gradient boosting and XGBoost in addition, but unfortunately my dataset was quite large (109247 observations) and the computation was taking too long. A 70-30 training test split was used for all three algorithms. As mentioned in the methods section, to facilitate the ML algorithms, a new cause variable was created which took the value "Human Error/Equipment Failure" if the cause of the incident was one of these two, and other if the cause was something else. These two causes were by far the most common, accounting for around 39% of incidents, and therefore they encapsulate a good portion of the data. The results for the three algorithms are shown in the table below:
+
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+set.seed(123)
+top50 <- data %>%
+  group_by(Contaminant.Name) %>%
+  rename(Contaminant = Contaminant.Name) %>%
+  summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
+  arrange(across(`Number of spills`, desc)) %>%
+  head(50)
+data$Site.Municipality = ifelse(data$Site.Municipality %in% cities, data$Site.Municipality, "Other")
+data$Contaminant.Name = ifelse(data$Contaminant.Name %in% top50$Contaminant, data$Contaminant.Name, "Other")
+
+
+data$Site.Municipality = as.factor(data$Site.Municipality)
+data$Contaminant.Name = as.factor(data$Contaminant.Name)
+data$Receiving.Media = as.factor(data$Receiving.Media)
+data$Sector.Type = as.factor(data$Sector.Type)
+data$Source.Type = as.factor(data$Source.Type)
+data$year = as.factor(data$year)
+train_idx <- sample(1:nrow(data), 10000)
+train <- data[train_idx[1:7000],]
+test <- data[train_idx[7001:10000],]
+for(j in 1: ncol(train)){
+   if(class(train[,j])=="factor"){
+         lvls=   union(levels(train[,j]), levels(test[,j]))
+         levels(train[,j]) =lvls
+         levels(test[,j]) =lvls
+   }
+ }
+# Classification tree
+cause_tree <- rpart(Cause ~ Site.Municipality + Contaminant.Name + Receiving.Media + Sector.Type + Source.Type + year, data=train, method="class", control = list(minsplit=10, minbucket=3, cp=0, xval=10))
+optimalcp = cause_tree$cptable[which.min(cause_tree$cptable[,"xerror"]), "CP"]
+cause_tree_pruned <- prune(cause_tree, cp = optimalcp)
+cause_pred <- predict(cause_tree_pruned, test)
+cause_pred <- as.data.frame(cause_pred)
+cause_pred$Cause <- ifelse(cause_pred$Other > 0.5, "Other", "Human Error/Equipment Failure")
+confmatrix_table <- table(true = test$Cause, predicted = cause_pred$Cause)
+# confmatrix_table
+misclass_err <- (confmatrix_table[1,2] + confmatrix_table[2,1]) / nrow(test)
+# misclass_err
+# min(cause_tree_pruned$cptable[,'xerror']) * 10000
+cause_bag <- randomForest(as.factor(Cause) ~ Contaminant.Name + Site.Municipality + Receiving.Media + Sector.Type + Source.Type + year, data = train, mtry=4, na.action = na.omit)
+cause_pred <- predict(cause_bag, test)
+cause_pred <- as.data.frame(cause_pred)
+confmatrix_table <- table(true = test$Cause, predicted = cause_pred$cause_pred)
+# confmatrix_table
+misclass_err <- (confmatrix_table[1,2] + confmatrix_table[2,1]) / nrow(test)
+# misclass_err
+# sum(cause_bag$err.rate[,1])
+cause_rf <- randomForest(as.factor(Cause) ~ Contaminant.Name + Site.Municipality + Receiving.Media + Sector.Type + Source.Type + year, data = train, na.action = na.omit)
+cause_pred <- predict(cause_bag, test)
+cause_pred <- as.data.frame(cause_pred)
+confmatrix_table <- table(true = test$Cause, predicted = cause_pred$cause_pred)
+# confmatrix_table
+misclass_err <- (confmatrix_table[1,2] + confmatrix_table[2,1]) / nrow(test)
+# misclass_err
+# sum(cause_rf$err.rate[,1])
+# varImpPlot(cause_bag)
+# varImpPlot(cause_rf)
+```
+
+```{r, echo=FALSE, eval=TRUE}
+techniques <- c("Classification tree", "Bagging", "Random Forest")
+correct <- c(1 - 0.2433, 1 - 0.2523, 1 - 0.252)
+wrong <- c(0.2433, 0.2523, 0.252)
+oob <- c(6009, 123.2, 116.6)
+ml <- data.frame(
+  `ML Algorithm` = techniques,
+  `Proportion of test correctly classified` = correct,
+  `Proportion of test misclassified` = wrong, 
+  `OOB error` = oob
+)
+ ml <- ml %>%
+   rename(`ML Algorithm` = ML.Algorithm,
+          `Proportion of test correctly classified` = Proportion.of.test.correctly.classified,
+          `Proportion of test misclassified` = Proportion.of.test.misclassified,
+          `OOB error` = OOB.error)
+knitr::kable(ml, "pipe")
+```
+
+When I fit the aforementioned three algorithms to predict the cause of an environmental spill, I found that all three algorithms performed fairly well, with an approximately 74-75% accuracy. There was no signifcant difference in the three algorithms in terms of accuracy, but the classification tree had a significantly higher out of bag error, which I found quite surprising. At first I believed that it had been computed incorrectly, but I do not believe that this is the case after having checked the computation over. In terms of variable importance, both bagging and random forests gave similar results. The source type variable was by far the most important predictor of the cause, followed by the type of contaminant, the year of incident, the location of the site, the sector (industry), and the receiving media (land, air, or water). The variable importance plot for bagging only is shown below (it is very similar for random forests):
+
+```{r, echo=FALSE, eval=TRUE, fig.height=5}
+varImpPlot(cause_bag)
+```
+
+
+# Conclusions and Summary
+
+Recall that my research question was: 
+
+What were the major sources and causes of environmental spills in Ontario between 2003 and 2020, and how did the number, sources and causes of environmental spills change across different years and locations? 
+
+Based on the analysis conducted, I found that the major sources of environmental spills in Ontario were natural gas, diesel fuel, hydraulic oil, transformer oil, and sewage. The notable change seen in the major sources over time was that natural gas became an increasingly common contaminant over time, but then saw a sharp decline in the number of spills per year it caused from 2019 to 2020. Also, natural gas caused a similar number of spills per capita across all cities even though Kenora and Dryden had a much larger number of spills per capita overall, while the number of spills per capita caused by sewage and diesel fuel was much higher and Kenora and Dryden compared to the other cities. In terms of the causes, I found that operator/human error and equipment failure were by far the biggest causes of environmental spills, and there was no notable change in the causes across locations. However, across time, the number of spills per year caused by human error increased significantly and far surpassed the number of spills per year caused by equipment failure as the years went by. Finally, when attempting to predict the cause of an environmental spill using machine learning techniques, I found that bagging, classification trees, and random forests performed similarly well in terms of their misclassification rate, but classification trees had a significantly higher out-of-bag error. The source of the spill and the contaminant were the most important variables in predicting the cause of the spill.

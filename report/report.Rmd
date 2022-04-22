@@ -158,7 +158,7 @@ From this table, we can see almost a clear trend that the number of spills has i
 
 After having seen the main sources, causes, and locations of environmental spills, I then attempted to see whether there was any change in these sources and causes across different years and locations. Displayed below are some visualizations which will help answer this part of the research question.
 
-## Graph showing the number of spills for each of the top 20 contaminants by year
+## Graph showing the number of spills per year for each of the top 20 contaminants
 
 ```{r, echo=FALSE, eval=TRUE, fig.height=6, fig.width=8}
 options("scipen"=100, "digits"=4)
@@ -176,11 +176,11 @@ p1 <- data %>%
   ggplot(aes(x = year, y = count, colour = Contaminant.Name)) +
   geom_line() +
   theme_linedraw() +
-  labs(x = "Year", y = "Number of spills", colour = "Contaminant")
+  labs(x = "Year", y = "Number of spills per year", colour = "Contaminant")
 p1 
 ```
 
-Right away, we can see in this plot that there was a huge jump in the number of spills per year caused by natural gas between 2012 and 2016, and then there was a large decline in the number of spills per year caused by natural gas between 2019 and 2020. I wonder why there was such a huge jump and then such a huge decline. There was also an increase in the number of spills per year caused by hydraulic oil. Otherwise, for the most part, the number of spills caused by other contaminants stayed consistent, with only minor fluctuations from year to year. 
+Right away, we can see in this plot that there was a huge jump in the number of spills per year caused by natural gas between 2012 and 2016, and then there was a large decline in the number of spills per year caused by natural gas between 2019 and 2020. I wonder why there was such a huge jump and then such a huge decline. There was also an increase in the number of spills per year caused by hydraulic oil. Otherwise, for the most part, the number of spills caused by other contaminants stayed consistent, with only minor fluctuations from year to year. This plot can also be seen on the website in interactive form (go to plot number three on the homepage).
 
 ## Graph showing the number of spills per capita for each of the 20 contaminants by city
 
@@ -201,9 +201,9 @@ Right away, we can see in this plot that there was a huge jump in the number of 
 p2
 ```
 
-Overall, I cannot see any noticeable difference in the proportion of spills per capita for each of the top 20 contaminants across different cities. One interesting thing I can see, however, is that even though Kenora and Dryden have a much higher number of spills per capita overall compared to the other cities, they have a similar number of spills per capita for natural gas. Kenora has a much higher number of spills per capita for sewage, and both Kenora and Dryden have a higher number of spills per capita for diesel fuel compared to other cities.
+Overall, I cannot see any noticeable difference in the proportion of spills per capita for each of the top 20 contaminants across different cities. One interesting thing I can see, however, is that even though Kenora and Dryden have a much higher number of spills per capita overall compared to the other cities, they have a similar number of spills per capita for natural gas. Kenora has a much higher number of spills per capita for sewage, and both Kenora and Dryden have a higher number of spills per capita for diesel fuel compared to other cities. This plot can also be seen on the website in interactive form (go to plot number four on the homepage).
 
-## Graph showing the number of spills for each of the top 20 causes by year
+## Graph showing the number of spills per year for each of the top 20 causes
 
 ```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.height=6, fig.width=8}
 options("scipen"=100, "digits"=4)
@@ -222,11 +222,11 @@ p3 <- data %>%
   ggplot(aes(x = year, y = count, colour = Incident.Reason)) +
   geom_line() +
   theme_linedraw() +
-  labs(x = "Year", y = "Number of spills", colour = "Cause")
+  labs(x = "Year", y = "Number of spills per year", colour = "Cause")
 p3
 ```
 
-There are a lot of interesting patterns that we can see in this plot. Firstly, until around 2012, the biggest causes of environmental spills were either unknown or equipment failure, with human/operator error being in third place. However, from 2012 to 2015, there was a large increase in the number of environmental spills per year caused by human error, and human error far surpassed equipment failure to become the leading cause of environmental spills. Then, from 2019 to 2020, the number of spills per year caused by human error dropped significantly to be at a similar level to spills caused by equipment failure. I am interested to know what the reason was for such a drastic fluctuation. 
+There are a lot of interesting patterns that we can see in this plot. Firstly, until around 2012, the biggest causes of environmental spills were either unknown or equipment failure, with human/operator error being in third place. However, from 2012 to 2015, there was a large increase in the number of environmental spills per year caused by human error, and human error far surpassed equipment failure to become the leading cause of environmental spills. Then, from 2019 to 2020, the number of spills per year caused by human error dropped significantly to be at a similar level to spills caused by equipment failure. I am interested to know what the reason was for such a drastic fluctuation. This plot can also be seen on the website in interactive form (go to plot number five on the homepage).
 
 ## Graph showing the number of spills for each of the top 20 causes by city
 

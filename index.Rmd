@@ -25,5 +25,179 @@ I have also created a brief 5 minute presentation regarding my project, which yo
 
 # Interactive Visualizations
 
+I have created some interactive visualizations below to give you a brief idea of what I found in my analysis. However, I would recommend that you read the full report for all the details!
 
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(tidyverse)
+library(plotly)
+data <- read.csv("data/dataset.csv", header = T)
+cities <- c("Barrie", "Bellevile", "Brampton", "Brantford", "Brockville", 
+            "Burlington", "Cambridge", "Clarence-Rockland", "Cornwall", "Dryden",
+            "Elliot Lake", "Greater Sudbury", "Guelph", "Hamilton", 
+            "Kawartha Lakes", "Kenora", "Kingston", "Kitchener", "London", 
+            "Markham", "Mississauga", "Niagara Falls", "North Bay", "Orillia", 
+            "Oshawa", "Ottawa", "Owen Sound", "Pembroke", "Peterborough", 
+            "Pickering", "Port Colborne", "Quinte West", "Richmond Hill", 
+            "Sarnia", "Sault Ste. Marie", "St. Catharines", "St. Thomas", 
+            "Stratford", "Temiskaming Shores", "Thorold", "Thunder Bay", 
+            "Timmins", "Toronto", "Vaughan", "Waterloo", "Welland", "Windsor", 
+            "Woodstock")
 
+pop <- c(141434, 50716, 593638, 97496, 21346, 183314, 129920, 24512, 46589, 7749,
+         10741, 161531, 131794, 536917, 75423, 15096, 123798, 233222, 383822, 
+         328966, 721599, 88071, 51553, 31166, 159458, 934243, 21341, 13882, 
+         81032, 91771, 18306, 43577, 195022, 71594, 73368, 133113, 38909, 31465,
+         9920, 18801, 107909, 41788, 2731570, 306233, 104986, 52293, 217188, 
+         40902)
+
+ontario <- data.frame(
+  Site.Municipality = cities,
+  population = pop
+)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Material Failure - Poor Design/Substandard Material", "Material Failure", data$Incident.Reason)
+data$Incident.Reason <- ifelse(grepl("Material",data$Incident.Reason, fixed = TRUE), "Material Failure", data$Incident.Reason)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Equipment Failure - Malfunction of system components", "Equipment Failure", data$Incident.Reason)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Fire/Explosion - Resulting from fires/explosions (Not occurrences which cause a fire or explosion)", "Fire/Explosion", data$Incident.Reason)
+data$Incident.Reason <- ifelse(data$Incident.Reason == "Power Interruption - Loss of electrical power", "Power Interruption/Loss", data$Incident.Reason)
+data <- data %>%
+  mutate(Date.Reported = as.Date(Date.Reported, format = "%Y/%m/%d"),
+         Contaminant.Name = str_to_sentence(Contaminant.Name),
+         year = as.numeric(format(as.Date(Date.Reported, format = "%Y/%m/%d"), "%Y")),
+         year_category = ifelse(year <= 2007, "2003-2007", 
+                         ifelse(year <= 2012, "2008-2012", 
+                         ifelse(year <= 2016, "2013-2016", "2017-2020"))),
+         location_type = ifelse(Site.Municipality %in% cities, "city", "outside city"),
+         consequence_score = as.numeric(substring(Health.Environmental.Consequence, 1, 1)),
+         Cause = ifelse(Incident.Reason == "Operator/Human Error" | Incident.Reason == "Equipment Failure", "Human Error/Equipment Failure", "Other")) %>%
+  left_join(ontario, by = "Site.Municipality")
+```
+
+<br>
+
+## Plot 1: Top 20 contaminants
+
+```{r, echo=FALSE, eval=TRUE}
+p1 <- data %>%
+  group_by(Contaminant.Name) %>%
+  rename(Contaminant = Contaminant.Name) %>%
+  summarise(`Number of environmental spills` = n(), `Proportion of environmental spills` = n()/109247) %>%
+  arrange(across(`Number of environmental spills`, desc)) %>%
+  head(20) %>%
+  mutate(Contaminant = reorder(Contaminant, `Number of environmental spills`)) %>%
+  ggplot(aes(x = Contaminant, y = `Number of environmental spills`, text = paste("Proportion of environemntal spills:", `Proportion of environmental spills`))) +
+  geom_bar(stat = 'identity') +
+  coord_flip()
+ggplotly(p1)
+```
+
+This plot shows us the top 20 contaminants by the number of spills that they caused. We can conclude from it that natural gas was by far the biggest culprit in terms of causing the most environmental spills. It alone was responsible for around 20% of spills in Ontario. Diesel fuel and hydraulic oil were also contaminants for a large number of spills, with diesel fuel being the contaminant in almost 11% of spills and hydraulic oil being the contaminant in 6.7% of spills.
+
+<br>
+
+## Plot 2: Top 20 causes
+
+```{r, echo=FALSE, eval=TRUE}
+p2 <- data %>%
+  group_by(Incident.Reason) %>%
+  summarise(`Number of environmental spills` = n(), 
+            `Proportion of environmental spills` = n()/109247) %>%
+  arrange(across(`Number of environmental spills`, desc)) %>%
+  filter(Incident.Reason != "Unknown / N/A") %>%
+  rename(Cause = Incident.Reason) %>%
+  head(20)
+p2[7, 1] = "Material Failure (Poor Design/Substandard Material)"
+p2 <- p2[-c(9),]
+p2 <- p2 %>%
+  mutate(Cause = reorder(Cause, `Number of environmental spills`)) %>%
+  ggplot(aes(x = Cause, y = `Number of environmental spills`, 
+             text = paste("Proportion of environmental spills:", `Proportion of environmental spills`))) +
+  geom_bar(stat = 'identity') +
+  coord_flip()
+ggplotly(p2)
+```
+
+This plot shows us the top 20 causes of environmental spills.  We can see that by far, the two biggest causes of environmental spills were human error, which causes around 21% of environmental spills, and equipment failure, which caused around 18% of spills. Other major causes included weather conditions, equipment failure, deliberate act, and lack of maintenance.
+
+<br>
+
+## Plot 3: Number of environmental spills per year for the top 20 contaminants
+
+```{r, echo=FALSE, eval=TRUE, fig.height=6, fig.width=8}
+options("scipen"=100, "digits"=4)
+top20 <- data %>%
+  group_by(Contaminant.Name) %>%
+  rename(Contaminant = Contaminant.Name) %>%
+  summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
+  arrange(across(`Number of spills`, desc)) %>%
+  head(20)
+
+p3 <- data %>%
+  filter(Contaminant.Name %in% top20$Contaminant) %>%
+  group_by(Contaminant.Name, year) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  rename(Year = year, `Number of environmental spills` = count, Contaminant = Contaminant.Name) %>%
+  ggplot(aes(x = Year, y = `Number of environmental spills`, colour = Contaminant)) +
+  geom_line() +
+  theme_linedraw() +
+  labs(x = "Year", y = "Number of environmental spills per year", colour = "Contaminant")
+ggplotly(p3) 
+```
+
+This plot shows the number of environmental spills caused every year by the top 20 contaminants from 2003 to 2020. Right away, we can see in this plot that there was a huge jump in the number of spills per year caused by natural gas between 2012 and 2016, and then there was a large decline in the number of spills per year caused by natural gas between 2019 and 2020. There was also an increase in the number of spills per year caused by hydraulic oil. Otherwise, for the most part, the number of spills caused by other contaminants stayed consistent, with only minor fluctuations from year to year. 
+
+<br>
+
+## Plot 4: Number of environmental spills per capita in each city in Ontario for the top 20 contaminants
+
+```{r, echo=FALSE, eval=TRUE, message=FALSE, warning=FALSE, fig.width=8, fig.height=8}
+ p4 <- data %>%
+  filter(Contaminant.Name %in% top20$Contaminant) %>%
+  filter(Site.Municipality %in% cities) %>%
+  group_by(Contaminant.Name, Site.Municipality) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  left_join(ontario, by="Site.Municipality") %>%
+  rename(City = Site.Municipality, Contaminant = Contaminant.Name) %>%
+  mutate(`Number of environmental spills per capita` = count/population, 
+         City = reorder(City, `Number of environmental spills per capita`)) %>%
+  ggplot(aes(x = City, y = `Number of environmental spills per capita`, fill = Contaminant)) +
+  geom_bar(stat = 'identity') +
+  theme_linedraw() +
+  coord_flip() +
+  labs(x = "City", y = "Number of environmental spills per capita", fill = "Contaminant")
+ggplotly(p4)
+
+```
+
+This plot shows the number of environmental spills per capita in each city in Ontario caused by the top 20 contaminants. Overall, we cannot see any noticeable difference in the proportion of spills per capita for each of the top 20 contaminants across different cities. One interesting thing we can see, however, is that even though Kenora and Dryden have a much higher number of spills per capita overall compared to the other cities, they have a similar number of spills per capita for natural gas. Kenora has a much higher number of spills per capita for sewage, and both Kenora and Dryden have a higher number of spills per capita for diesel fuel compared to other cities.
+
+<br>
+
+## Plot 5: Number of environmental spills per year for the top 20 causes
+
+```{r, echo=FALSE, eval=TRUE, fig.height=6, fig.width=8}
+options("scipen"=100, "digits"=4)
+top20 <- data %>%
+  filter(Incident.Reason != "Unknown / N/A") %>%
+  group_by(Incident.Reason) %>%
+  summarise(`Number of spills` = n(), `Proportion of spills` = n()/109247) %>%
+  arrange(across(`Number of spills`, desc)) %>%
+  head(21)
+top20 <- top20[-9,]
+
+p5 <- data %>%
+  filter(Incident.Reason %in% top20$Incident.Reason) %>%
+  group_by(Incident.Reason, year) %>%
+  summarize(count = n(), .groups = "drop") %>%
+  rename(Year = year, `Number of environmental spills` = count, Cause = Incident.Reason) %>%
+  ggplot(aes(x = Year, y = `Number of environmental spills`, colour = Cause)) +
+  geom_line() +
+  theme_linedraw() +
+  labs(x = "Year", y = "Number of environmental spills per year", colour = "Cause")
+ggplotly(p5)
+```
+
+This plot shows the number of environmental spills caused every year by the top 20 causes from 2003 to 2020. There are a lot of interesting patterns that we can see in this plot. Firstly, until around 2012, the biggest causes of environmental spills were either unknown or equipment failure, with human/operator error being in third place. However, from 2012 to 2015, there was a large increase in the number of environmental spills per year caused by human error, and human error far surpassed equipment failure to become the leading cause of environmental spills. Then, from 2019 to 2020, the number of spills per year caused by human error dropped significantly to be at a similar level to spills caused by equipment failure.
+
+<br>
